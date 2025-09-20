@@ -1,28 +1,61 @@
-# Cow wisdom web server
+### Wisecow Application Deployment
+* * * * *
+This repository contains the Wisecow application and all the necessary artifacts to deploy it to a Kubernetes cluster with a complete CI/CD pipeline and secure TLS communication.
 
-## Prerequisites
+### Project Overview
 
-```
-sudo apt install fortune-mod cowsay -y
-```
+This project focuses on completing **Problem Statement 1** of the assessment, which involves containerizing and deploying the Wisecow application to a Kubernetes cluster. The key requirements met are:
 
-## How to use?
+-   **Dockerization:** The application is containerized into a Docker image.
 
-1. Run `./wisecow.sh`
-2. Point the browser to server port (default 4499)
+-   **Kubernetes Deployment:** Kubernetes manifests are used to deploy the application.
 
-## What to expect?
-![wisecow](https://github.com/nyrahul/wisecow/assets/9133227/8d6bfde3-4a5a-480e-8d55-3fef60300d98)
+-   **CI/CD Pipeline:** A GitHub Actions workflow automates the build, push, and deployment process.
 
-# Problem Statement
-Deploy the wisecow application as a k8s app
+-   **TLS Implementation:** Secure communication is enabled using a TLS certificate.
 
-## Requirement
-1. Create Dockerfile for the image and corresponding k8s manifest to deploy in k8s env. The wisecow service should be exposed as k8s service.
-2. Github action for creating new image when changes are made to this repo
-3. [Challenge goal]: Enable secure TLS communication for the wisecow app.
+### Project Artifacts
 
-## Expected Artifacts
-1. Github repo containing the app with corresponding dockerfile, k8s manifest, any other artifacts needed.
-2. Github repo with corresponding github action.
-3. Github repo should be kept private and the access should be enabled for following github IDs: nyrahul
+The following artifacts have been created and committed to this repository:
+
+#### 1\. Dockerfile
+
+A **`Dockerfile`** is located in the root directory. It builds the container image for the Wisecow application by:
+
+-   Using an Ubuntu base image.
+
+-   Installing required dependencies (`cowsay` and `fortune-mod`).
+
+-   Copying the `wisecow.sh` script into the image.
+
+#### 2\. Kubernetes Manifests
+
+The **`k8s/`** directory contains all the Kubernetes manifest files for deployment.
+
+-   **`deployment.yaml`**: Defines the Kubernetes Deployment, which ensures a single replica of the application is running.
+
+-   **`service.yaml`**: Defines a `ClusterIP` service to expose the Wisecow application internally to the NGINX Ingress Controller.
+
+-   **`issuer.yaml`**: Defines a `ClusterIssuer` for `cert-manager` to issue a self-signed TLS certificate.
+
+-   **`ingress.yaml`**: Configures the NGINX Ingress Controller to manage external traffic, **terminate TLS using `cert-manager`**, and route requests to the Wisecow service.
+
+#### 3\. GitHub Actions CI/CD Pipeline
+
+The **`.github/workflows/ci-cd.yml`** file contains a GitHub Actions workflow that automates the entire CI/CD process. The workflow:
+
+-   **Builds and Pushes** a new Docker image to Docker Hub whenever changes are pushed to the `main` branch.
+
+-   **Provisions a Temporary Kubernetes Cluster** using Minikube on the GitHub Actions runner.
+
+-   **Installs Required Addons** such as NGINX Ingress and `cert-manager` on the ephemeral cluster.
+
+-   **Deploys** the Wisecow application using the Kubernetes manifest files.
+
+### How to Run the Project
+
+1.  **Fork** this repository.
+
+2.  **Add GitHub Secrets**: In your forked repository, go to **Settings > Secrets and variables > Actions** and add secrets for your Docker Hub username (`DOCKER_USERNAME`) and password (`DOCKER_PASSWORD`).
+
+3.  **Push Changes**: Commit your changes and push them to the `main` branch. This will automatically trigger the GitHub Actions workflow, which will handle the container build, push, and Kubernetes deployment.
