@@ -1,4 +1,4 @@
-### Wisecow Application Deployment
+# Wisecow Application Deployment
 * * * * *
 This repository contains the Wisecow application and all the necessary artifacts to deploy it to a Kubernetes cluster with a complete CI/CD pipeline and secure TLS communication.
 
