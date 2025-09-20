@@ -28,14 +28,14 @@ jobs:
           push: true
           tags: prithv33/wisecow-app:latest
 
-      - name: Set up Kubeconfig for deployment
-        run: |
-          # Create the .kube directory
-          mkdir -p $HOME/.kube
-          # Write the kubeconfig secret to the file
-          echo "${{ secrets.KUBE_CONFIG }}" > $HOME/.kube/config
+      - name: Start Minikube
+        uses: medyagh/setup-minikube@latest
 
-      - name: Deploy to Kubernetes
+      - name: Deploy to Minikube
         run: |
-          # Apply the Kubernetes manifest files
+          # This assumes your Kubernetes manifests are in a folder named 'k8s'
           kubectl apply -f k8s/
+
+      - name: Verify Deployment
+        run: |
+          kubectl get pods
