@@ -59,7 +59,9 @@ jobs:
 
     - name: Wait for KubeArmor CRD
       run: |
-        kubectl wait --namespace cert-manager --for=condition=Ready pod -l 'app.kubernetes.io/name in (cert-manager,cert-manager-cainjector,cert-manager-webhook)' --timeout=300s
+        kubectl wait --namespace cert-manager --for=condition=Available deployment/cert-manager --timeout=300s
+        kubectl wait --namespace cert-manager --for=condition=Available deployment/cert-manager-webhook --timeout=300s
+        kubectl wait --namespace cert-manager --for=condition=Available deployment/cert-manager-cainjector --timeout=300s
 
     - name: Apply Kubernetes Manifests
       run: kubectl apply -f k8s/
