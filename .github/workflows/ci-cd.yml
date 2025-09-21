@@ -32,8 +32,7 @@ jobs:
         uses: medyagh/setup-minikube@latest
         with:
           addons: ingress
-      
-      # Install Cert-Manager (as before)
+
       - name: Install Cert-Manager
         run: |
           helm repo add jetstack https://charts.jetstack.io
@@ -49,7 +48,6 @@ jobs:
           kubectl wait --for=condition=ready pod -l app.kubernetes.io/instance=cert-manager \
           --timeout=5m -n cert-manager
           
-      # New: Install KubeArmor
       - name: Install KubeArmor
         run: |
           helm repo add kubearmor https://kubearmor.github.io/charts
@@ -57,24 +55,23 @@ jobs:
           helm install kubearmor-operator kubearmor/kubearmor-operator \
             --namespace kubearmor \
             --create-namespace
-          kubectl wait --for=condition=ready pod -l kubearmor-app=kubearmor -n kubearmor --timeout=5m
+          
+      - name: Wait for KubeArmor deployment to be ready
+        run: |
+          kubectl rollout status deployment kubearmor-operator -n kubearmor --timeout=5m
+      
+      - name: Apply Kubernetes Manifests
+        run: |
+          kubectl apply -f k8s/
+          
       - name: Trigger a policy violation
         run: |
-           # Get the name of the Wisecow pod
-           POD_NAME=$(kubectl get pods -l app=wisecow -o jsonpath='{.items[0].metadata.name}')
-           # Attempt to run /bin/sh inside the pod, which should be blocked
-           kubectl exec -it $POD_NAME -- /bin/sh -c "echo 'This should be blocked'" || true
+          # Get the name of the Wisecow pod
+          POD_NAME=$(kubectl get pods -l app=wisecow -o jsonpath='{.items[0].metadata.name}')
+          # Attempt to run /bin/sh inside the pod, which should be blocked
+          kubectl exec -it $POD_NAME -- /bin/sh -c "echo 'This should be blocked'" || true
+      
       - name: Get KubeArmor logs and verify violation
         run: |
           KUBE_ARMOR_POD=$(kubectl get pods -n kubearmor -l kubearmor-app=kubearmor --no-headers | awk '{print $1}')
           kubectl logs $KUBE_ARMOR_POD -n kubearmor | grep "PolicyBlocked"
-      
-      - name: Apply Kubernetes Manifests
-        run: |
-          # The deployment order is important:
-          # 1. Self-signed Issuer
-          # 2. Deployment and Service
-          # 3. Ingress with TLS
-          # 4. KubeArmor Policy
-          kubectl apply -f k8s/issuer.yaml
-          kubectl apply -f k8s/
