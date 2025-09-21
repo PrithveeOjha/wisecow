@@ -4,74 +4,55 @@ on:
   push:
     branches:
       - main
-  pull_request:
-    branches:
-      - main
 
 jobs:
-  build_and_deploy:
+  build-and-deploy:
     runs-on: ubuntu-latest
-
     steps:
-    - name: Checkout Repository
-      uses: actions/checkout@v2
+      - name: Checkout Repository
+        uses: actions/checkout@v3
 
-    - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@v1
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
 
-    - name: Log in to Docker Hub
-      uses: docker/login-action@v1
-      with:
-        username: ${{ secrets.DOCKER_USERNAME }}
-        password: ${{ secrets.DOCKER_PASSWORD }}
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+          
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v4
+        with:
+          context: .
+          push: true
+          tags: ${{ secrets.DOCKER_USERNAME }}/wisecow-app:latest
+          
+      - name: Start Minikube with Ingress
+        uses: medyagh/setup-minikube@latest
+        with:
+          addons: ingress
 
-    - name: Build and Push Docker image
-      uses: docker/build-push-action@v2
-      with:
-        context: .
-        push: true
-        tags: ${{ secrets.DOCKER_USERNAME }}/wisecow:latest
+      - name: Install Cert-Manager
+        run: |
+          helm repo add jetstack https://charts.jetstack.io
+          helm repo update
+          helm install cert-manager jetstack/cert-manager \
+            --namespace cert-manager \
+            --create-namespace \
+            --version v1.12.0 \
+            --set installCRDs=true
 
-    - name: Install Kind
-      run: |
-        curl -Lo ./kind https://kind.sigs.k8s.io/dl/v0.11.1/kind-linux-amd64
-        chmod +x ./kind
-        sudo mv ./kind /usr/local/bin/kind
+      - name: Wait for Cert-Manager pods to be ready
+        run: |
+          kubectl wait --for=condition=ready pod -l app.kubernetes.io/instance=cert-manager \
+          --timeout=5m -n cert-manager
 
-    - name: Create Kind Cluster
-      run: kind create cluster
-
-    - name: Install Cert-Manager
-      run: |
-        kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/v1.7.1/cert-manager.yaml
-        kubectl wait --namespace cert-manager --for=condition=Available deployment/cert-manager --timeout=300s
-        kubectl wait --namespace cert-manager --for=condition=Available deployment/cert-manager-webhook --timeout=300s
-        kubectl wait --namespace cert-manager --for=condition=Available deployment/cert-manager-cainjector --timeout=300s
-
-    - name: Install Helm
-      uses: azure/setup-helm@v1
-      with:
-        version: v3.7.0
-
-    - name: Install KubeArmor Operator
-      run: |
-        helm repo add kubearmor https://kubearmor.github.io/charts
-        helm repo update
-        helm install kubearmor-operator kubearmor/kubearmor-operator --set autoDeploy=false -n kubearmor --create-namespace
-        kubectl apply -f https://raw.githubusercontent.com/kubearmor/KubeArmor/main/pkg/KubeArmorOperator/config/operator/kubearmor-operator.yaml
-    
-    - name: Wait for KubeArmor CRD
-      run: |
-        kubectl wait --for condition=established crd/kubearmorpolicies.security.kubearmor.com --timeout=5m
-        
-    - name: Apply Kubernetes Manifests
-      run: kubectl apply -f k8s/
-      
-    - name: Check Deployed Resources
-      run: |
-        kubectl get all -n default
-        kubectl get all -n kubearmor
-
-    - name: Show logs
-      if: always()
-      run: kubectl get pods -A
+      - name: Apply Kubernetes Manifests
+        run: |
+          # The deployment order is important:
+          # 1. Self-signed Issuer
+          # 2. Deployment and Service
+          # 3. Ingress with TLS
+          kubectl apply -f k8s/issuer.yaml
+          kubectl apply -f k8s/
