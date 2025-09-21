@@ -26,7 +26,7 @@ jobs:
         with:
           context: .
           push: true
-          tags: prithv33/wisecow-app:latest
+          tags: your-dockerhub-username/wisecow-app:latest
           
       - name: Start Minikube with Ingress
         uses: medyagh/setup-minikube@latest
@@ -56,9 +56,10 @@ jobs:
             --namespace kubearmor \
             --create-namespace
           
-      - name: Wait for KubeArmor deployment to be ready
+      - name: Wait for KubeArmor CRDs to be ready
         run: |
-          kubectl rollout status deployment kubearmor-operator -n kubearmor --timeout=5m
+          # Wait for the KubeArmorPolicy CRD to be created
+          kubectl wait --for condition=established crd/kubearmorpolicies.security.kubearmor.com --timeout=5m
       
       - name: Apply Kubernetes Manifests
         run: |
