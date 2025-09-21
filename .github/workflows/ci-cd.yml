@@ -44,7 +44,7 @@ jobs:
     - name: Install Cert-Manager
       run: |
         kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/v1.7.1/cert-manager.yaml
-        kubectl wait --for=condition=ready pod -l app.kubernetes.io/instance=cert-manager -n cert-manager --timeout=300s
+        kubectl wait --namespace cert-manager --for=condition=Ready pod -l app.kubernetes.io/name in (cert-manager,cert-manager-cainjector,cert-manager-webhook) --timeout=300s
 
     - name: Install Helm
       uses: azure/setup-helm@v1
