@@ -58,11 +58,12 @@ jobs:
         helm repo add kubearmor https://kubearmor.github.io/charts
         helm repo update
         helm install kubearmor-operator kubearmor/kubearmor-operator --set autoDeploy=false -n kubearmor --create-namespace
-
+        kubectl apply -f https://raw.githubusercontent.com/kubearmor/KubeArmor/main/pkg/KubeArmorOperator/config/operator/kubearmor-operator.yaml
+    
     - name: Wait for KubeArmor CRD
       run: |
         kubectl wait --for condition=established crd/kubearmorpolicies.security.kubearmor.com --timeout=5m
-
+        
     - name: Apply Kubernetes Manifests
       run: kubectl apply -f k8s/
       
